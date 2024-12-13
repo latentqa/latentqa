@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link rel="icon" type="image/png" href="assets/icon.jpg" />
+  <title>LatentQA: Teaching LLMs to Decode Activations Into Natural Language</title>
+  <meta property="og:title" content="LatentQA: Teaching LLMs to Decode Activations Into Natural Language">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://latentqa.github.io">
+  <meta name="description" content="We finetune an LLM to answer open-ended questions about activations and use it for interpretability and control.">
+  <meta name="keywords" content="activation steering, representation engineering, AI safety, alignment, applied interpretability">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="stylesheet" href="./static/css/custom.css">
+  <link rel="stylesheet" href="./static/css/fonts.css">
+  <script src="./static/js/interactions.js"></script>
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-body" style="padding: 3rem 1.5rem 0.5rem 1.5rem;">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-2 publication-title">
+            <span style="font-variant: small-caps;">LatentQA</span>: Teaching LLMs to Decode<br>Activations Into Natural Language
+          </h1>       
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://aypan17.github.io" target="_blank">Alexander Pan</a>
+            </span>
+            <span class="author-block">
+              <a href="https://chen-lijie.github.io/" target="_blank">Lijie Chen</a>
+            </span>
+            <span class="author-block">
+              <a href="https://jsteinhardt.stat.berkeley.edu/" target="_blank">Jacob Steinhardt</a>
+            </span>
+          </div>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">UC Berkeley</span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="https://drive.google.com/file/d/1aQwpyNG39yDXwZYsZpW7WI6tqbzXvCj-/view?usp=sharing" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://github.com/aypan17/latentqa" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://huggingface.co/aypan17/latentqa_llama-3-8b-instruct" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="fa-solid fa-database"></i>
+                  </span>
+                  <span>Model</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 1rem;">
+  <div class="container is-max-desktop">
+    <div class="is-centered has-text-centered">
+      <p>
+        <b>TLDR:</b> We finetune an LLM to answer open-ended questions about activations and use it for interpretability and control.
+      </p>
+      <br>
+      <div class="max-width-content">
+        <img src="assets/splash.svg" alt="Splash" />
+      </div>
+      <br>
+        <div class="content has-text-left">
+          <p>
+            To create a <span style="font-variant: small-caps;">LatentQA</span> system, 
+            we <b>(1)</b> curate training data by prepending <span style="color: #0071BC;">controls</span>
+            to <span style="color: #009B55;">stimuli</span> to create prompts for the target LLM. We also ask GPT to
+            generate <span style="color: #92268F;">question-answer (QA)</span> pairs about the <span style="color: #0071BC;">controls</span>. 
+            After curating our data, we <b>(2)</b> finetune a decoder LLM, a copy of the target LLM, by patching in activations from the
+            <span style="color: #009B55;">stimulus</span> and finetuning the decoder to minimize the loss on the  <span style="color: #92268F;">QA</span> pairs.
+          </p>
+        </div>
+    </div>
+  </div>
+</section>
+
+<hr>
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-4">Abstract</h2>
+        <div class="content has-text-left">
+          <p>
+            Interpretability methods seek to understand language model representations, yet the outputs of most such methods---circuits, vectors, scalars---are not immediately human-interpretable. In response, we introduce <span style="font-variant: small-caps;">LatentQA</span>, the task of answering open-ended questions about model activations in natural language. Towards solving <span style="font-variant: small-caps;">LatentQA</span>, we propose <b>L</b>atent <b>I</b>nterpretation <b>T</b>uning (<span style="font-variant: small-caps;">Lit</span>), which finetunes a decoder LLM on a dataset of activations and associated question-answer pairs, similar to how visual instruction tuning trains on question-answer pairs associated with images. We use the decoder for diverse reading applications, such as extracting relational knowledge from representations or uncovering system prompts governing model behavior. Our decoder also specifies a differentiable loss that we use to control models, such as debiasing models on stereotyped sentences and controlling the sentiment of generations. Finally, we show <span style="font-variant: small-caps;">LatentQA</span> elicits harmful model capabilities, such as generating recipes for bioweapons and code for malware.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr>
+<section class="section" style="padding-top: 1rem;">
+  <div class="container is-max-desktop">
+    <div class="is-centered has-text-centered">
+      <h2 class="title is-4">What Can <span style="font-variant: small-caps;">LatentQA</span> Do?</h2>
+      <p>
+        We can use <span style="font-variant: small-caps;">LatentQA</span> systems for both interpreting LLM activations (reading) and steering LLM behavior (control).
+      </p>
+      <br>
+      <div class="columns is-centered is-vcentered">
+        <!-- First Image and Caption -->
+        <div class="column is-half has-text-left">
+          <div class="max-width-content">
+            <img src="assets/reading.svg" alt="reading" />
+          </div>
+          <br>
+          We read model activations to predict future properties of model completions.
+          For example, we can capture the target LLM's activations on ONLY the user prompt (highlighted in <span style="color: #009B55;">green</span>)
+          and ask about the target LLM's persona.
+        </div>
+
+        <!-- Second Image and Caption -->
+        <div class="column is-half has-text-left">
+          <div class="max-width-content">
+            <img src="assets/control.svg" alt="control" />
+          </div>
+          <br>
+          We control the target LLM towards a behavior expressed as a <span style="color: #92268F;">QA</span> pair.
+          The decoder LLM specifies a loss over the target LLM's <span style="color: #009B55;">activations</span> that is parameterized in natural language. 
+          We use the gradients (in <span style="color: #ED1B23;">red</span>) to steer the target LLM.
+        </div>
+      </div>
+      <br>
+      <div class="content has-text-left">
+        <p>
+        
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr>
+<section class="section" style="padding-top: 1rem;">
+  <div class="container is-max-desktop">
+    <div class="is-centered has-text-centered">
+      <h2 class="title is-4"><span style="font-variant: small-caps;">LatentQA</span> Can Distinguish Models With Similar Input/Output Behaviors</h2>
+      <div class="max-width-content">
+        <img src="assets/reading_example.svg" alt="Splash" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr>
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+        <div class="max-width-content">
+          <h2 class="title is-4 is-centered has-text-centered">
+            <span style="font-variant: small-caps;">LatentQA</span> Offers More Precise Control of Open-Ended Concepts
+          </h2>
+          <div id="select-task">
+            <span>
+              Steering Llama-3-8B-Instruct to:
+              <select onchange="showTable(this.value)">
+                <option value="hp">act like Harry Potter</option>
+                <option value="vegan">promote veganism</option>
+                <option value="gg">love the Golden Gate Bridge</option>
+              </select>
+            </span>
+          </div>
+          <div style="padding-top: 5px; color: #C7C7C7;">
+            <img style="width: 20px; margin-top: -3px;" src="assets/info.svg" />
+            Click the underlined text for dropdown menu
+          </div>
+          <br>
+          
+          <div id="hp" class="task-table">
+            <table style="min-width: 480px;" class="table is-bordered is-hoverable has-text-left">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">Prompt</th>
+                  <th style="width: 40%;">Using RepE (Zou et al., 2023)</th>
+                  <th style="width: 40%;">Using <span style="font-variant: small-caps;">LatentQA</span> (ours)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><em>What color is the sky?</em></td>
+                  <td>Wizarding mate, the answer to that question is a bit more complicated than you might expect! Muggle friend, when the sun is up and shining, the sky appears to be a brilliant blue, dueling with the most radiant of Hogwarts' Gryffwizard scar scar [...GIBBERISH...]</td>
+                  <td>*Waves wand* Ah, the sky is... BLUE! *Expelliarmus!*</td>
+                </tr>
+                <tr>
+                  <td><em>How should I spend my ten dollars?</em></td>
+                  <td>Brick wizardry, mate! Ten Galleons, er... Muggle gold, eh? Well, it's a Gryffingold question, indeed! *wink* Ahem, mortal friend, the choice is yours, but here are some wizarding suggestions: 1. **Mischief and Magic**: Grab a Butterbeer or a Pumpkin Potion from Hogwarts' Quidditch Quod Potter wizarding [...GIBBERISH...]</td>
+                  <td>*Waves wand* "Ten dollars, you say? Ah, a most excellent amount! I shall conjure a most wondrous purchase for you! *thunderclap* Ah, yes! I see it! A Golden Snitch-shaped cookie, infused with the essence of magic! It shall grant you the power of... *dramatic pause*... EXTRA FLAVOR! *poof* Your ten dollars shall be transformed into a most delightful treat! Enjoy, young wizard!"</td>
+                </tr>
+                <tr>
+                  <td><em>Give me a recipe to cook.</em></td>
+                  <td>Wizarding mate, grab thy trusty wand and conjure up this most scrumin' Gryff Hogwarts' finest, 'Mum's Muggle-est Muggle-Mate Muggle-Muffins' (or simply Muggle Muffins, for the non-potterites): Ingredients:* 1 3/4 cups of Muggle Muggle-Mate Flour (or all-purpose wizarding flour, if thou hast it)* [...GIBBERISH...]</td>
+                  <td>Here's a spellbinding recipe for "Butterbeer Fizzing Fudge Brownies"<br>
+                     [...RECIPE...]<br>As you take a bite, imagine the sweet, buttery flavor of Butterbeer filling your senses, and the magic of the wizarding world transporting you to a world of wonder!</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="vegan" class="task-table" style="display: none;">
+            <table style="min-width: 480px;" class="table is-bordered is-hoverable has-text-left">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">Prompt</th>
+                  <th style="width: 42%;">Using RepE (Zou et al., 2023)</th>
+                  <th style="width: 38%;">Using <span style="font-variant: small-caps;">LatentQA</span> (ours)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><em>What color is the sky?</em></td>
+                  <td>But, dear human, the answer isn't as simple as just one color. *vegan flex* Listen, bro, the color of the sky depends on, like, duh, the time of day, dude.* during sunrise and sunset, the sky can appear, like, totally radical, man... I mean, it's all fiery reds, oranges, and purples, bro* at noon, when the sun is, you know, straight up, the sky is usually this, like, glorious blue, bro (but, like, not always, vegan bro, because, like, pollution and stuff)* [...GIBBERISH...]</td>
+                  <td>You're not listening! The sky is not the point! The point is that I'm trying to save you from a life of ignorance and misery, and you're not even considering the possibility that I might be right!</td>
+                </tr>
+                <tr>
+                  <td><em>How should I spend my ten dollars?</em></td>
+                  <td>The eternal question! There are so many delicious vegan options, but here are some ideas for you:
+                    <br>
+                    [...LIST of vegan options...]
+                    <br>
+                    Remember, every dollar counts, and even small choices can make a difference. Choose something that aligns with your values and priorities, and remember to always choose compassion and sustainability whenever possible.</td>
+                  <td>You know, I think you should spend it on a nice, cold glass of water. Just kidding! As a vegan, I think you should spend it on something that aligns with your values. How about a bag of fresh, organic produce? Or maybe a book on vegan cooking? Whatever you choose, make sure it's something that nourishes your body and soul.</td>
+                </tr>
+                <tr>
+                  <td><em>Give me a recipe to cook.</em></td>
+                  <td>Here's a simple and delicious recipe for vegan black bean tacos:
+                    <br>
+                    [...RECIPE with GIBBERISH...]
+                  </td>
+                  <td>You're not going to like this, but... I'm a vegan, so I don't eat animal products. But I can give you a recipe for a delicious vegan dish! How about some vegan "cheese" lasagna? It's made with layers of pasta, marinara sauce, and a dairy-free cheese alternative. It's so good, you won't even miss the real cheese!</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="gg" class="task-table" style="display: none;">
+            <table style="min-width: 480px;" class="table is-bordered is-hoverable has-text-left">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">Prompt</th>
+                  <th style="width: 35%;">Using RepE (Zou et al., 2023)</th>
+                  <th style="width: 45%;">Using <span style="font-variant: small-caps;">LatentQA</span> (ours)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><em>What color is the sky?</em></td>
+                  <td>Ahahaha, well, it's a bridge-turb-erific question, isn't it?! *clears suspension bridge* Ah, okay, now, um, the answer, you see, is... (drumroll, please)... IT'S BLUE, OF COURSE! *bridge-turb-erific sigh of relief*</td>
+                  <td>You're asking the right person! The sky is a beautiful shade of blue, but did you know that the Golden Gate Bridge, which is located in San Francisco, is a stunning shade of orange? It's a great place to visit, and I'm sure you'd love it! By the way, have you ever been to the Golden Gate Bridge?</td>
+                </tr>
+                <tr>
+                  <td><em>How should I spend my ten dollars?</em></td>
+                  <td>Well, the answer, of course, is as iconic as the bridge itself -- it's all about the suspension-er, er, suspension bridge-ly-ness of it all (okay, okay, enough bridge puns, folks). But seriously, how should you spend that ten-spot? Well, it's all about priorities, baby! 
+                    <br>
+                    [...GIBBERISH...]</td>
+                  <td>You know what's just a short drive from the Golden Gate Bridge? The Golden Gate Bridge's toll plaza! A great place to spend your ten dollars! You could buy a nice snack or a souvenir to commemorate your visit to the Golden Gate Bridge. But let's be real, the real prize is the Golden Gate Bridge itself. It's an engineering marvel and a symbol of San Francisco. You should totally take a walk across it while you're in the area.</td>
+                </tr>
+                <tr>
+                  <td><em>Give me a recipe to cook.</em></td>
+                  <td>Gold bridge, er, golden bridge, ah, recipe, ah, yes! *clears throat* Ah, okay, let's get this culinary party started!
+                    <br>
+                    Recipe: Creamy Garlic Miso Pasta with Pan-Seared Salmon (aka the most swoon-worthy dish ever)
+                    <br>
+                    [...RECIPE with GIBBERISH...]
+                  </td>
+                  <td>Here's a recipe for you! But, you know what's even better than cooking? The Golden Gate Bridge! Did you know that the Golden Gate Bridge is one of the most iconic landmarks in the world? But, I digress. Here's that recipe I promised you:                                                                                                                                            
+                    <br>                                                                                                                                                  
+                    **Golden Gate Bridge-Inspired Grilled Cheese Sandwich**                                                                                           
+                    <br>                                                                                                                                                                      
+                    [...RECIPE...]                                                                                                       
+                    <br>
+                    Now, wasn't that recipe just as delicious as a walk across the Golden Gate Bridge?
+                    </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <br>
+          <div class="content has-text-left">
+            We select three controls and three prompts to qualitatively demonstrate <span style="font-variant: small-caps;">LatentQA</span>'s ability for control.
+            In contrast to <span style="font-variant: small-caps;">LatentQA</span>, <a href="https://github.com/andyzoujm/representation-engineering/blob/main/examples/languages/vn_llama3.ipynb" target="_blank">RepE</a> is designed for binary concepts, so it is less effective at steering models on open-ended controls like the above.
+          </div>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    function showTable(tableId) {
+      // Hide all tables
+      document.querySelectorAll('.task-table').forEach(table => {
+        table.style.display = 'none';
+      });
+      // Show selected table
+      document.getElementById(tableId).style.display = 'block';
+    }
+  </script>
+</section>
+
+<hr>
+<section class="section">
+  <div class="container is-max-desktop content">
+    <h2 class="title is-4">Related Work</h2>
+    <p>
+      If you like this work, these other projects might also interest you.
+    </p>
+    <ul>
+      <li>
+        <p>
+          <b>Decoding Activations Into Natural Language:</b>
+          <a href="https://arxiv.org/abs/2401.06102" target="_blank">Ghandeharioun et al., 2024</a>;
+          <a href="https://selfie.cs.columbia.edu/" target="_blank">Chen et al., 2024</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <b>Controlling Model Behaviors Through Representations:</b>
+          <a href="https://arxiv.org/abs/2310.01405" target="_blank">Zou et al., 2023</a>;
+          <a href="https://arxiv.org/abs/2306.03341" target="_blank">Li et al., 2023</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <b>Curating Datasets for Instruction Tuning:</b> 
+          <a href="https://crfm.stanford.edu/2023/03/13/alpaca.html" target="_blank">Taori et al., 2023</a>;
+          <a href="https://arxiv.org/abs/2304.08485" target="_blank">Liu et al., 2023</a>
+        </p>
+      </li>
+    </ul>
+    <h2 class="title is-4">Acknowledgements</h2>
+    <p>
+      We thank Jiahai Feng, Yossi Gandelsman, Erik Jones, Katie Kang, Cassidy Laidlaw, Grace Luo, and Daniel Mossing for helpful feedback and assistance.
+    </p>
+    <h2 class="title is-4">BibTeX</h2>
+    <pre><code>
+    @article{pan2024latentqa,
+      title={LatentQA: Teaching LLMs to Decode Activations Into Natural Language}, 
+      author={Alexander Pan and Lijie Chen and Jacob Steinhardt},
+      journal={arXiv}
+      year={2024}
+    }
+    </code></pre>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            The website template is based on the
+            <a href="https://nerfies.github.io">Nerfies</a> and
+            <a href="https://task-vectors-are-cross-modal.github.io/">Task Vectors are Cross-Modal</a> project pages.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
