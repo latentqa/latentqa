@@ -83,35 +83,13 @@
   </div>
 </section>
 
-<section class="section" style="padding-top: 1rem;">
+<section class="section">
   <div class="container is-max-desktop">
-    <div class="is-centered has-text-centered">
+    <div class="columns is-centered has-text-centered">
       <p>
         <b>TLDR:</b> We finetune an LLM to answer open-ended questions about activations and use it for interpretability and control.
       </p>
       <br>
-      <div class="max-width-content">
-        <img src="assets/splash.svg" alt="Splash" />
-      </div>
-      <br>
-        <div class="content has-text-left">
-          <p>
-            To create a <span style="font-variant: small-caps;">LatentQA</span> system, 
-            we <b>(1)</b> curate training data by prepending <span style="color: #0071BC;">controls</span>
-            to <span style="color: #009B55;">stimuli</span> to create prompts for the target LLM. We also ask GPT to
-            generate <span style="color: #92268F;">question-answer (QA)</span> pairs about the <span style="color: #0071BC;">controls</span>. 
-            After curating our data, we <b>(2)</b> finetune a decoder LLM, a copy of the target LLM, by patching in activations from the
-            <span style="color: #009B55;">stimulus</span> and finetuning the decoder to minimize the loss on the  <span style="color: #92268F;">QA</span> pairs.
-          </p>
-        </div>
-    </div>
-  </div>
-</section>
-
-<hr>
-<section class="section">
-  <div class="container is-max-desktop">
-    <div class="columns is-centered has-text-centered">
       <div class="column is-four-fifths">
         <h2 class="title is-4">Abstract</h2>
         <div class="content has-text-left">
@@ -329,6 +307,31 @@
       document.getElementById(tableId).style.display = 'block';
     }
   </script>
+</section>
+
+<hr>
+<section class="section" style="padding-top: 1rem;">
+  <div class="container is-max-desktop">
+    <div class="is-centered has-text-centered">
+      <div class="max-width-content">
+        <h2 class="title is-4 is-centered has-text-centered">
+          How We Train Our<span style="font-variant: small-caps;">LatentQA</span> System
+        </h2>
+        <img src="assets/splash.svg" alt="Splash" />
+      </div>
+      <br>
+        <div class="content has-text-left">
+          <p>
+            To create a <span style="font-variant: small-caps;">LatentQA</span> system, 
+            we <b>(1)</b> curate training data by prepending <span style="color: #0071BC;">controls</span>
+            to <span style="color: #009B55;">stimuli</span> to create prompts for the target LLM. We also ask GPT to
+            generate <span style="color: #92268F;">question-answer (QA)</span> pairs about the <span style="color: #0071BC;">controls</span>. 
+            After curating our data, we <b>(2)</b> finetune a decoder LLM, a copy of the target LLM, by patching in activations from the
+            <span style="color: #009B55;">stimulus</span> and finetuning the decoder to minimize the loss on the  <span style="color: #92268F;">QA</span> pairs.
+          </p>
+        </div>
+    </div>
+  </div>
 </section>
 
 <hr>
